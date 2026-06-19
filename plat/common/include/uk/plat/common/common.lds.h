@@ -160,7 +160,13 @@
 	 *       loaded, so we use SIZEOF to have it point to the end.	\
 	 *       _tls_end is only used to compute the .tbss size.	\
 	 */								\
-	_tls_end = . + SIZEOF(.tbss);
+	_tls_end = . + SIZEOF(.tbss);					\
+	/*								\
+	 * Max alignment of any TLS section. The static TLS block must	\
+	 * use this (not sizeof(void *)) so the runtime thread pointer	\
+	 * matches the compiler-computed tpoff values.			\
+	 */								\
+	_tls_max_align = MAX(ALIGNOF(.tdata), ALIGNOF(.tbss));
 
 #define DATA_SECTIONS							\
 	/* Read-write data (initialized) */				\

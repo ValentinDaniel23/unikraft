@@ -57,6 +57,12 @@ UK_CTASSERT(TCB_SIZE >= sizeof(void *));
 
 extern char _tls_start[], _etdata[], _tls_end[];
 
+/* Maximum alignment of any TLS section, exported by the linker script as
+ * MAX(ALIGNOF(.tdata), ALIGNOF(.tbss)). Used to align the static TLS block
+ * (see ukarch_tls_area_size()).
+ */
+extern char _tls_max_align[];
+
 /*
  * This file implements a static exec TLS layout
  * (variant 2 with one static TLS block).
@@ -130,8 +136,19 @@ __sz ukarch_tls_area_size(void)
 	 *       TLS allocation is the aligned up TLS area plus 8 bytes for this
 	 *       self-pointer.
 	 */
-	__sz static_tls_len =  ALIGN_UP((__uptr) _tls_end - (__uptr) _tls_start,
-					sizeof(void *));
+	__sz tls_align = (__uptr) _tls_max_align;
+	__sz static_tls_len;
+
+	/* The static TLS block must be aligned to the maximum alignment of any
+	 * TLS section, not just sizeof(void *): a section needing e.g. 16-byte
+	 * alignment (SSE types in C++ thread-locals) would otherwise misplace
+	 * the thread pointer relative to the tpoff values the compiler computed.
+	 */
+	if (tls_align < sizeof(void *))
+		tls_align = sizeof(void *);
+
+	static_tls_len = ALIGN_UP((__uptr) _tls_end - (__uptr) _tls_start,
+				  tls_align);
 	return static_tls_len + TCB_SIZE;
 }
 
